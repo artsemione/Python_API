@@ -1,0 +1,35 @@
+# {"datahora":"2020-02-26T10:30:04.910-03:00","taxa_chuva":-0.2,"chuva_dia":32.4,"chuva_mes":133.6,
+# "sens_term":-32768,"barometro":1008.199,"temp_ext":-32768,"temp_int":24.111,"umid_ext":-32768,"umid_int":78,
+# "rad_solar":-32768,"max_vento_10min":0,"min_vento_10min":0,"rad_uv":-32768,"vel_vento":-32768,"dir_vento":32767,
+# "taxa_evap":0} {datahora: string, taxa_chuva: number, chuva_dia: number, chuva_mes: number, sens_term: number,
+# barometro: number, temp_ext: number, temp_int: number, umid_ext: number, umid_int: number, rad_solar: number}
+
+
+import json
+
+DavisJSON = {
+    "data":
+        [{
+            "datahora":"2020-02-26T10:30:04.910-03:00",
+            "taxa_chuva":-0.2,
+            "chuva_dia":32.4,
+            "chuva_mes":133.6,
+            "sens_term":-32768,
+            "barometro":1008.199,
+            "temp_ext":-32768,
+            "temp_int":24.111,
+            "umid_ext":-32768,
+            "umid_int":78,
+            "rad_solar":-32768,
+            "max_vento_10min":0,
+            "min_vento_10min":0,
+            "rad_uv":-32768,
+            "vel_vento":-32768,
+            "dir_vento":32767,
+            "taxa_evap":0
+        }]
+}
+# Transforming JSON -> String
+json_string = json.dumps(DavisJSON, indent=2)
+with open('JSON.Data', 'w') as f:
+    f.write(json_string)
