@@ -1,0 +1,72 @@
+# http://localhost:8000/api-estacao.php?id=DC00&dataini=2021-10-29T08:40:00-03:00&datafim=2021-10-29T09:00:00-03:00
+
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import pyodbc
+import json
+
+
+# FUNÇÃO PARA CONSULTAR DADOS NO BANCO SQLExpress
+def SelectFromSQL(server_name, db_name, dt_i, dt_f):
+
+    # ___STATEMENT___
+    stringcompleta = ''
+    jsondata = {
+        "datahora": "dt",
+        "taxa_chuva": 0.0,
+    }
+    cntr = 0
+
+    # ___SELECT FROM SQL___
+    sql = pyodbc.connect('Driver={SQL Server};'
+                         'Server=' + server_name + ';'
+                                                   'Database=' + db_name + ';'
+                                                                           'Trusted_Connection=yes;')
+    select = sql.cursor()
+    select.execute("SELECT * FROM dbo.DavisData where datahora >= convert(datetime2, '" + dt_i + "',126) AND datahora "
+                                                                                                 "<= convert("
+                                                                                                 "datetime2, "
+                                                                                                 "'" + dt_f + "',126)")
+    # ___TRANSFORMA JSON EM STRING E CONCATENA AS DIVERSAS STRINGS___
+    for i in select:
+        jsondata = {
+            "datahora": str(i[0]),
+            "taxa_chuva": float(i[1]),
+        }
+        # Transforming JSON -> String
+        stringparcial = json.dumps(jsondata)+','
+        stringcompleta = stringcompleta + stringparcial
+    return stringcompleta.replace(" ", "")
+
+
+# ___SERVIDOR HTTP___
+class HTTP_Handler(BaseHTTPRequestHandler):
+
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        station = self.path[20:24]
+        date_i = self.path[33:43]
+        time_i = self.path[44:52]
+        date_f = self.path[67:77]
+        time_f = self.path[78:86]
+        if station == "DC00":
+            jaisonstring = SelectFromSQL('DESKTOP-I3P2KBV\SQLAULA', 'SQL_DB_1', date_i + ' ' + time_i + '.293',
+                                         date_f + ' ' + time_f + '.293')
+            jaisonstring = '['+jaisonstring+']'
+            jaisonstring = jaisonstring.replace(",]", "]")
+            self.wfile.write(jaisonstring.encode())
+
+
+def main():
+    print(__name__)
+    PORT = 8000
+    server = HTTPServer(('', PORT), HTTP_Handler)
+    server.serve_forever()
+
+
+# if __name__ == '__main__':
+main()
+# A variável __name__ representa o nome do módulo. Entretanto, quando o módulo é executado por si só como um
+# programa, __name__ é definido para ’__main__’, diferente de quando o módulo é importado, no qual o valor fica de
+# fato igual ao nome do módulo.
