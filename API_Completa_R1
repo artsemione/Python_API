@@ -1,0 +1,120 @@
+"""
+HTTP Server
+Código para subir um servidor HTTP que realiza pesquisa em banco de dados SQLExpress
+com o padrao de requisição atraves da URL:
+localhost:8000/api-estacao.php?id=DC00&dataini=2021-10-29T08:40:00-03:00&datafim=2021-10-29T09:58:00-03:00
+
+Configurar intervalo de tempo no qual se deseja obter os dados salvos no banco SQL:
+dataini=2021-10-29T08:40:00
+datafim=2021-10-29T09:58:00
+
+A aplicação pesquisa colunas no banco de dados cujo nome esteja declarado no JSON em:
+        jsondict = {
+            "datahora": auxi0,
+            "taxa_chuva": float(i[1]),
+            "chuva_dia": 32.4,
+            "chuva_mes": 133.6,
+                        .
+                        .
+                        .
+        }
+----------------------------------------------------------------------------------------------------------
+
+Instructions:
+
+1. Nome da DB e do servidor SQL ao qual será feita a pesquisa altera-se em :
+
+    # CLASSE HTTP_Handler COM HERANÇA DA CLASSE BaseHTTPRequestHandler
+    class HTTP_Handler(BaseHTTPRequestHandler):
+
+        def do_GET(self):
+                    .
+                    .
+                    .
+    }
+
+"""
+
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import pyodbc
+import json
+import psutil
+
+
+# METODO PARA TRANSFORMAR PADRAO JSON EM STRING
+def JSONToString(select):
+    # DECLARA A STRING
+    stringcompleta = ''
+
+    # TRANSFORMA O JSON DE CADA ITERACAO EM STRINGS E AS CONCATENA
+    for i in select:
+        auxi0 = str(i[0]).replace(" ", "T")
+        auxi0 = auxi0.replace("000", "-03:00")
+
+        jsondict = {
+            "datahora": auxi0,
+            "taxa_chuva": float(i[1]),
+            "chuva_dia": float(i[2]),
+            "chuva_mes": float(i[3]),
+            "sens_term": float(i[4]),
+            "barometro": float(i[5]),
+            "temp_ext": float(i[6]),
+            "temp_int": float(i[7]),
+            "umid_ext": float(i[8]),
+            "umid_int": float(i[9]),
+            "rad_solar": float(i[10]),
+            "max_vento_10min": float(i[11]),
+            "min_vento_10min": float(i[12]),
+            "rad_uv": float(i[13]),
+            "vel_vento": float(i[14]),
+            "dir_vento": float(i[15]),
+            "taxa_evap": float(i[16])
+        }
+        # Transforming JSON -> String
+        stringparcial = json.dumps(jsondict) + ','
+        stringcompleta = stringcompleta + stringparcial
+    return stringcompleta.replace(" ", "")
+
+
+# FUNÇÃO PARA CONSULTAR DADOS NO BANCO SQLExpress
+def SelectFromSQL(server_name, db_name, dt_i, dt_f):
+    # DECLARA O DICIONÁRIO QUE SERA TRANSFORMADO EM JSON
+    jsondata = {
+        "datahora": "dt",
+    }
+
+    # COMANDO SELECT PARA ACESSAR OS DADOS DO BANCO SQLExpress
+    sql = pyodbc.connect('Driver={SQL Server};'
+                         'Server=' + server_name + ';'
+                                                   'Database=' + db_name + ';'
+                                                                           'Trusted_Connection=yes;')
+    select = sql.cursor()
+    select.execute("SELECT * FROM dbo.DavisData where datahora >= convert(datetime2, '" + dt_i + "',126) AND datahora "
+                                                                                                 "<= convert("
+                                                                                                 "datetime2, "
+                                                                                                 "'" + dt_f + "',126)")
+    return JSONToString(select)
+
+
+# CLASSE HTTP_Handler COM HERANÇA DA CLASSE BaseHTTPRequestHandler
+class HTTP_Handler(BaseHTTPRequestHandler, HTTPServer):
+
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/html; charset=utf-8")
+        self.end_headers()
+        station = self.path[20:24]
+        date_i = self.path[33:43]
+        time_i = self.path[44:52]
+        date_f = self.path[67:77]
+        time_f = self.path[78:86]
+        if station == "DC00":
+            jaisonstring = SelectFromSQL('DESKTOP-I3P2KBV\SQLAULA', 'SQL_DB_1', date_i + ' ' + time_i + '.293',
+                                         date_f + ' ' + time_f + '.293')
+            jaisonstring = '[' + jaisonstring + ']'
+            jaisonstring = jaisonstring.replace(",]", "]")
+            self.wfile.write(jaisonstring.encode())
+
+
+servico = HTTPServer(('', 8000), HTTP_Handler)
+servico.serve_forever()
